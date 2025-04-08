@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 30px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .logout {
+      cursor: pointer;
+      font-size: 18px;
+      background-color: #f44336;
+      padding: 8px 15px;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+
+    .logout:hover {
+      background-color: #d32f2f;
+    }
+
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: calc(100vh - 70px);
+    }
+
+    .buttons {
+      display: flex;
+      gap: 40px;
+    }
+
+    .btn {
+      padding: 20px 30px;
+      font-size: 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      min-width: 140px;
+    }
+
+    .btn:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <%- include('layout', { title: 'Home'}) %>
+  <div class="header">
+    <div><a href="/" style="color: white; text-decoration: none; font-size: 24px; font-weight: bold;">TRANG CHỦ</a></div>
+    <div class="logout" onclick="logout()">Đăng xuất</div>
+  </div>
+
+  <div class="container">
+    <div class="buttons">
+      <button class="btn" onclick="window.location.href='/users/profile'">Thông tin</button>
+      <button class="btn" onclick="window.location.href='/line98'">Line98</button>
+      <button class="btn" onclick="window.location.href='/caro'">Caro</button>
+    </div>
+  </div>
+</body>
+</html>

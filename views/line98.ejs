@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9;">
+  <%- include('layout', { title: 'Line98'}) %>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: #4CAF50; color: white; font-size: 24px; font-weight: bold;">
+    <div><a href="/" style="color: white; text-decoration: none; font-size: 24px; font-weight: bold;">TRANG CHỦ</a></div>
+    <div class="logout" onclick="logout()" style="cursor: pointer; font-size: 18px; background-color: #f44336; padding: 8px 15px; border-radius: 5px; transition: background-color 0.3s;">
+      Đăng xuất
+    </div>
+  </div>
+  <div id="game-container" style="display: grid; grid-template-columns: repeat(9, 40px); grid-template-rows: repeat(9, 40px); gap: 5px; margin: 50px auto; width: 405px;"></div>
+  <div style="text-align: center; margin: 20px auto;">
+    <button class="help-btn" onclick="startHelp()" style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">Trợ giúp</button>
+    <button onclick="resetGame()" style="padding: 10px 20px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">Chơi lại</button>
+  </div>
+  <div id="message" style="text-align: center; font-size: 20px; margin-top: 20px; color: red;"></div>
+  <div id="next-balls" style="text-align: center; margin-top: 20px; font-size: 16px;">
+    <div>Bóng tiếp theo:</div>
+    <div id="next-balls-preview" style="display: flex; justify-content: center; margin-top: 10px;"></div>
+  </div>
+
+  <script>
+    const rows = 9;
+    const cols = 9;
+    let board = Array.from({ length: rows }, () => Array(cols).fill(null));
+    let selectedBall = null;
+    let isGameOver = false;
+    let nextBalls = [];
+    let nextBallPositions = [];
+
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+    
+    const gameContainer = document.getElementById('game-container');
+    const messageDiv = document.getElementById('message');
+    const nextBallsPreview = document.getElementById('next-balls-preview');
+
+    function createBoard() {
+      gameContainer.innerHTML = '';
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.createElement('div');
+          cell.classList.add('cell');
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.style.width = '40px';
+          cell.style.height = '40px';
+          cell.style.backgroundColor = '#ddd';
+          cell.style.borderRadius = '5px';
+          cell.style.cursor = 'pointer';
+          cell.style.display = 'flex';
+          cell.style.justifyContent = 'center';
+          cell.style.alignItems = 'center';
+          cell.style.transition = 'all 0.3s';
+          cell.addEventListener('click', () => handleCellClick(r, c));
+          gameContainer.appendChild(cell);
+        }
+      }
+      nextBalls = [];
+      for (let i = 0; i < 7; i++) {
+        nextBalls.push(colors[Math.floor(Math.random() * colors.length)]);
+      }
+      updateNextBallsPreview();
+      findEmptyCellsForNextBalls();
+      placeBalls(true);
+    }
+
+    function generateNextBalls() {
+      nextBalls = [];
+      for (let i = 0; i < 3; i++) {
+        nextBalls.push(colors[Math.floor(Math.random() * colors.length)]);
+      }
+      updateNextBallsPreview();
+    }
+
+    function updateNextBallsPreview() {
+      nextBallsPreview.innerHTML = '';
+      nextBalls.forEach(color => {
+        const ball = document.createElement('div');
+        ball.style.width = '20px';
+        ball.style.height = '20px';
+        ball.style.borderRadius = '50%';
+        ball.style.backgroundColor = color;
+        ball.style.margin = '0 5px';
+        ball.style.transition = 'transform 0.3s';
+        ball.style.transform = 'scale(0)';
+        nextBallsPreview.appendChild(ball);
+        
+        setTimeout(() => {
+          ball.style.transform = 'scale(1)';
+        }, 50);
+      });
+    }
+
+    function findEmptyCellsForNextBalls() {
+      nextBallPositions = [];
+      let emptyCells = [];
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!board[r][c]) {
+            emptyCells.push({r, c});
+          }
+        }
+      }
+      
+      while (nextBallPositions.length < nextBalls.length && emptyCells.length > 0) {
+        const randomIndex = Math.floor(Math.random() * emptyCells.length);
+        nextBallPositions.push(emptyCells[randomIndex]);
+        emptyCells.splice(randomIndex, 1);
+      }
+      
+      return nextBallPositions.length >= nextBalls.length;
+    }
+
+    function placeBalls(isInitial = false) {
+      if (nextBallPositions.length < nextBalls.length) {
+        isGameOver = true;
+        messageDiv.textContent = 'Trò chơi kết thúc! Không có đủ không gian để đặt bóng mới.';
+        return false;
+      }
+      
+      if (!isInitial) {
+        nextBallPositions.forEach((pos, index) => {
+          const cell = getCellElement(pos.r, pos.c);
+          const indicator = document.createElement('div');
+          indicator.classList.add('ball-indicator');
+          indicator.style.width = '15px';
+          indicator.style.height = '15px';
+          indicator.style.borderRadius = '50%';
+          indicator.style.backgroundColor = nextBalls[index];
+          indicator.style.opacity = '0.5';
+          indicator.style.transition = 'all 0.5s';
+          cell.appendChild(indicator);
+          
+          setTimeout(() => {
+            indicator.style.transform = 'scale(1.5)';
+            indicator.style.opacity = '0.7';
+          }, 50);
+        });
+        
+        setTimeout(() => {
+          placeActualBalls();
+        }, 500);
+      } else {
+        placeActualBalls();
+      }
+      
+      return true;
+    }
+    
+    function placeActualBalls() {
+      nextBallPositions.forEach((pos, index) => {
+        const cell = getCellElement(pos.r, pos.c);
+        cell.innerHTML = '';
+        
+        board[pos.r][pos.c] = nextBalls[index];
+        createBallElement(cell, nextBalls[index]);
+      });
+      
+      setTimeout(() => {
+        if (!checkLines()) {
+          generateNextBalls();
+          findEmptyCellsForNextBalls();
+        }
+      }, 300);
+    }
+
+    function createBallElement(cell, color) {
+      const ball = document.createElement('div');
+      ball.classList.add('ball');
+      ball.style.width = '30px';
+      ball.style.height = '30px';
+      ball.style.borderRadius = '50%';
+      ball.style.backgroundColor = color;
+      ball.style.transition = 'all 0.3s';
+      ball.style.transform = 'scale(0)';
+      cell.appendChild(ball);
+      
+      setTimeout(() => {
+        ball.style.transform = 'scale(1)';
+      }, 50);
+    }
+
+    function getCellElement(r, c) {
+      return gameContainer.children[r * cols + c];
+    }
+
+    function handleCellClick(r, c) {
+      if (isGameOver) return;
+      
+      if (selectedBall === null) {
+        selectBall(r, c);
+      } else {
+        moveBall(r, c);
+      }
+    }
+
+    function selectBall(r, c) {
+      if (board[r][c] !== null) {
+        if (selectedBall !== null) {
+          const prevCell = getCellElement(selectedBall.r, selectedBall.c);
+          const prevBall = prevCell.querySelector('.ball');
+          if (prevBall) prevBall.style.transform = 'scale(1)';
+        }
+        
+        selectedBall = { r, c, color: board[r][c] };
+        const cell = getCellElement(r, c);
+        const ball = cell.querySelector('.ball');
+        if (ball) {
+          animatePulsatingBall(ball);
+        }
+      }
+    }
+    
+    function animatePulsatingBall(ball) {
+      let growing = true;
+      let scale = 1;
+      const pulsateInterval = setInterval(() => {
+        if (growing) {
+          scale += 0.05;
+          if (scale >= 1.2) growing = false;
+        } else {
+          scale -= 0.05;
+          if (scale <= 1) growing = true;
+        }
+        ball.style.transform = `scale(${scale})`;
+        
+        if (!selectedBall || !document.contains(ball)) {
+          clearInterval(pulsateInterval);
+        }
+      }, 150);
+      
+      ball.pulsateInterval = pulsateInterval;
+    }
+
+    function moveBall(toR, toC) {
+      if (!selectedBall) return;
+      if (board[toR][toC] !== null) {
+        selectBall(toR, toC);
+        return;
+      }
+      
+      const path = findPath(selectedBall.r, selectedBall.c, toR, toC);
+      
+      if (path && path.length > 0) {
+        const sourceCell = getCellElement(selectedBall.r, selectedBall.c);
+        const sourceBall = sourceCell.querySelector('.ball');
+        if (sourceBall && sourceBall.pulsateInterval) {
+          clearInterval(sourceBall.pulsateInterval);
+        }
+        
+        animateBallMovement(path, () => {
+          if (!checkLines()) {
+            placeBalls();
+          }
+        });
+      } else {
+        messageDiv.textContent = 'Không thể di chuyển đến vị trí này!';
+        setTimeout(() => {
+          messageDiv.textContent = '';
+        }, 1500);
+      }
+    }
+
+    function animateBallMovement(path, callback) {
+      const fromR = selectedBall.r;
+      const fromC = selectedBall.c;
+      const ballColor = selectedBall.color;
+      
+      const sourceCell = getCellElement(fromR, fromC);
+      sourceCell.innerHTML = '';
+      board[fromR][fromC] = null;
+      
+      const floatingBall = document.createElement('div');
+      floatingBall.classList.add('floating-ball');
+      floatingBall.style.width = '30px';
+      floatingBall.style.height = '30px';
+      floatingBall.style.borderRadius = '50%';
+      floatingBall.style.backgroundColor = ballColor;
+      floatingBall.style.position = 'absolute';
+      floatingBall.style.zIndex = '100';
+      floatingBall.style.transition = 'all 0.15s ease-in-out';
+      document.body.appendChild(floatingBall);
+      
+      const sourceCellRect = sourceCell.getBoundingClientRect();
+      floatingBall.style.left = (sourceCellRect.left + 5) + 'px';
+      floatingBall.style.top = (sourceCellRect.top + 5) + 'px';
+      
+      let stepIndex = 0;
+      
+      function animateStep() {
+        if (stepIndex >= path.length) {
+          document.body.removeChild(floatingBall);
+          
+          const destR = path[path.length - 1].r;
+          const destC = path[path.length - 1].c;
+          const destCell = getCellElement(destR, destC);
+          
+          board[destR][destC] = ballColor;
+          createBallElement(destCell, ballColor);
+          
+          selectedBall = null;
+          
+          if (callback) callback();
+          return;
+        }
+        
+        const step = path[stepIndex];
+        const cell = getCellElement(step.r, step.c);
+        const cellRect = cell.getBoundingClientRect();
+        
+        floatingBall.style.left = (cellRect.left + 5) + 'px';
+        floatingBall.style.top = (cellRect.top + 5) + 'px';
+        
+        stepIndex++;
+        setTimeout(animateStep, 80);
+      }
+      
+      setTimeout(animateStep, 50);
+    }
+
+    function findPath(fromR, fromC, toR, toC) {
+      if (board[toR][toC] !== null) return null;
+      
+      const queue = [{r: fromR, c: fromC, path: []}];
+      const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+      visited[fromR][fromC] = true;
+      
+      const dr = [-1, 0, 1, 0];
+      const dc = [0, 1, 0, -1];
+      
+      while (queue.length > 0) {
+        const current = queue.shift();
+        
+        if (current.r === toR && current.c === toC) {
+          return [...current.path, {r: toR, c: toC}];
+        }
+        
+        for (let i = 0; i < 4; i++) {
+          const newR = current.r + dr[i];
+          const newC = current.c + dc[i];
+          
+          if (newR >= 0 && newR < rows && newC >= 0 && newC < cols && 
+              !visited[newR][newC] && board[newR][newC] === null) {
+            
+            visited[newR][newC] = true;
+            queue.push({
+              r: newR, 
+              c: newC, 
+              path: [...current.path, {r: current.r, c: current.c}]
+            });
+          }
+        }
+      }
+      
+      return null;
+    }
+
+    function checkLines() {
+      const directions = [
+        {dr: 0, dc: 1},
+        {dr: 1, dc: 0},
+        {dr: 1, dc: 1},
+        {dr: 1, dc: -1}
+      ];
+      
+      let ballsToRemove = new Set();
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!board[r][c]) continue;
+          
+          const color = board[r][c];
+          
+          for (const dir of directions) {
+            let count = 1;
+            let lineCells = [{r, c}];
+            
+            let nr = r + dir.dr;
+            let nc = c + dir.dc;
+            while (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === color) {
+              count++;
+              lineCells.push({r: nr, c: nc});
+              nr += dir.dr;
+              nc += dir.dc;
+            }
+            
+            if (count >= 5) {
+              for (const cell of lineCells) {
+                ballsToRemove.add(`${cell.r},${cell.c}`);
+              }
+            }
+          }
+        }
+      }
+      
+      if (ballsToRemove.size > 0) {
+        for (const cellKey of ballsToRemove) {
+          const [r, c] = cellKey.split(',').map(Number);
+          const cell = getCellElement(r, c);
+          
+          const ball = cell.querySelector('.ball');
+          if (ball) {
+            ball.style.transform = 'scale(1.8)';
+            ball.style.opacity = '0';
+            setTimeout(() => {
+              cell.innerHTML = '';
+            }, 300);
+          }
+          
+          board[r][c] = null;
+        }
+        
+        messageDiv.textContent = `Nổ ${ballsToRemove.size} quả bóng!`;
+        setTimeout(() => {
+          messageDiv.textContent = '';
+        }, 1500);
+        
+        return true;
+      }
+      
+      let emptyCount = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c] === null) emptyCount++;
+        }
+      }
+      
+      if (emptyCount < 3) {
+        isGameOver = true;
+        messageDiv.textContent = 'Trò chơi kết thúc! Không đủ không gian để tiếp tục.';
+        return true;
+      }
+      
+      return false;
+    }
+
+    function startHelp() {
+      if (isGameOver) {
+        resetGame();
+        return;
+      }
+      
+      messageDiv.textContent = 'Đang tìm nước đi tốt nhất...';
+      
+      const bestMove = findBestMove();
+      
+      if (bestMove) {
+        messageDiv.textContent = `Gợi ý: Di chuyển bóng từ (${bestMove.fromR+1},${bestMove.fromC+1}) đến (${bestMove.toR+1},${bestMove.toC+1})`;
+        
+        const fromCell = getCellElement(bestMove.fromR, bestMove.fromC);
+        const fromBall = fromCell.querySelector('.ball');
+        if (fromBall) {
+          let isVisible = true;
+          const blinkInterval = setInterval(() => {
+            if (isVisible) {
+              fromBall.style.boxShadow = '0 0 10px 5px gold';
+              fromBall.style.transform = 'scale(1.2)';
+            } else {
+              fromBall.style.boxShadow = '';
+              fromBall.style.transform = 'scale(1)';
+            }
+            isVisible = !isVisible;
+          }, 500);
+          
+          setTimeout(() => {
+            clearInterval(blinkInterval);
+            fromBall.style.boxShadow = '';
+            fromBall.style.transform = 'scale(1)';
+          }, 3000);
+          
+          const toCell = getCellElement(bestMove.toR, bestMove.toC);
+          toCell.style.boxShadow = 'inset 0 0 10px gold';
+          setTimeout(() => {
+            toCell.style.boxShadow = '';
+          }, 3000);
+        }
+      } else {
+        messageDiv.textContent = 'Không tìm thấy nước đi tốt!';
+      }
+    }
+
+    function findBestMove() {
+      for (let fromR = 0; fromR < rows; fromR++) {
+        for (let fromC = 0; fromC < cols; fromC++) {
+          if (!board[fromR][fromC]) continue;
+          
+          const color = board[fromR][fromC];
+          
+          for (let toR = 0; toR < rows; toR++) {
+            for (let toC = 0; toC < cols; toC++) {
+              if (board[toR][toC] || !findPath(fromR, fromC, toR, toC)) continue;
+              
+              board[fromR][fromC] = null;
+              board[toR][toC] = color;
+              
+              const wouldCreateLine = checkWouldCreateLine(toR, toC);
+              
+              board[toR][toC] = null;
+              board[fromR][fromC] = color;
+              
+              if (wouldCreateLine) {
+                return { fromR, fromC, toR, toC, priority: 3 };
+              }
+            }
+          }
+        }
+      }
+      
+      let bestPositioningMove = null;
+      let bestPositioningScore = -1;
+      
+      for (let fromR = 0; fromR < rows; fromR++) {
+        for (let fromC = 0; fromC < cols; fromC++) {
+          if (!board[fromR][fromC]) continue;
+          
+          const color = board[fromR][fromC];
+          
+          for (let toR = 0; toR < rows; toR++) {
+            for (let toC = 0; toC < cols; toC++) {
+              if (board[toR][toC] || !findPath(fromR, fromC, toR, toC)) continue;
+              
+              board[fromR][fromC] = null;
+              board[toR][toC] = color;
+              
+              const score = countAdjacentSameColor(toR, toC);
+              
+              board[toR][toC] = null;
+              board[fromR][fromC] = color;
+              
+              if (score > bestPositioningScore) {
+                bestPositioningScore = score;
+                bestPositioningMove = { fromR, fromC, toR, toC, priority: 2 };
+              }
+            }
+          }
+        }
+      }
+      
+      if (bestPositioningMove) return bestPositioningMove;
+      
+      for (let fromR = 0; fromR < rows; fromR++) {
+        for (let fromC = 0; fromC < cols; fromC++) {
+          if (!board[fromR][fromC]) continue;
+          
+          for (let toR = 0; toR < rows; toR++) {
+            for (let toC = 0; toC < cols; toC++) {
+              if (board[toR][toC]) continue;
+              
+              const path = findPath(fromR, fromC, toR, toC);
+              if (path) {
+                return { fromR, fromC, toR, toC, priority: 1 };
+              }
+            }
+          }
+        }
+      }
+      
+      return null;
+    }
+
+    function checkWouldCreateLine(r, c) {
+      if (!board[r][c]) return false;
+      
+      const color = board[r][c];
+      const directions = [
+        {dr: 0, dc: 1},
+        {dr: 1, dc: 0},
+        {dr: 1, dc: 1},
+        {dr: 1, dc: -1}
+      ];
+      
+      for (const dir of directions) {
+        let count = 1;
+        
+        let pr = r + dir.dr;
+        let pc = c + dir.dc;
+        while (pr >= 0 && pr < rows && pc >= 0 && pc < cols && board[pr][pc] === color) {
+          count++;
+          pr += dir.dr;
+          pc += dir.dc;
+        }
+        
+        let nr = r - dir.dr;
+        let nc = c - dir.dc;
+        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === color) {
+          count++;
+          nr -= dir.dr;
+          nc -= dir.dc;
+        }
+        
+        if (count >= 5) return true;
+      }
+      
+      return false;
+    }
+
+    function countAdjacentSameColor(r, c) {
+      if (!board[r][c]) return 0;
+      
+      const color = board[r][c];
+      const directions = [
+        {dr: 0, dc: 1},
+        {dr: 1, dc: 0},
+        {dr: 1, dc: 1},
+        {dr: 1, dc: -1}]
+      
+      let maxInARow = 0;
+      
+      for (const dir of directions) {
+        let count = 1;
+        
+        let pr = r + dir.dr;
+        let pc = c + dir.dc;
+        while (pr >= 0 && pr < rows && pc >= 0 && pc < cols && board[pr][pc] === color) {
+          count++;
+          pr += dir.dr;
+          pc += dir.dc;
+        }
+        
+        let nr = r - dir.dr;
+        let nc = c - dir.dc;
+        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc] === color) {
+          count++;
+          nr -= dir.dr;
+          nc -= dir.dc;
+        }
+        
+        maxInARow = Math.max(maxInARow, count);
+      }
+      
+      return maxInARow;
+    }
+
+    function resetGame() {
+      board = Array.from({ length: rows }, () => Array(cols).fill(null));
+      selectedBall = null;
+      isGameOver = false;
+      messageDiv.textContent = '';
+      createBoard();
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Caro</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0; display: flex; flex-direction: column; height: 100vh;">
+  <%- include('layout', { title: 'Caro'}) %>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: #4CAF50; color: white; font-size: 24px; font-weight: bold;">
+    <div><span style="color: #f44336;">PHÒNG: </span><span><%- room?.CODE -%></span></div>
+    <div style="cursor: pointer; font-size: 18px; background-color: #f44336; padding: 8px 15px; border-radius: 5px; transition: background-color 0.3s;">
+      <a href="/caro" style="color: white; text-decoration: none; font-size: 18px; font-weight: bold;">Trở về</a>
+    </div>
+  </div>
+  
+  <div style="flex-grow: 1; display: flex; justify-content: center; align-items: center; flex-direction: column; padding: 20px; gap: 20px;">
+    <div style="margin-bottom: 20px;">
+      <span id="notification" style='color: red; font-size: 20px; font-weight: bold;' hidden></span>
+      <br/>
+      <span id="startGame"  style='color: red; font-size: 20px; font-weight: bold;' hidden></span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(15, 30px); grid-template-rows: repeat(15, 30px); gap: 5px; justify-content: center;" id="board">
+      <!-- Tạo màn đánh caro -->
+    </div>
+  </div>
+  
+  <div style="display: flex; justify-content: space-between; padding: 10px 30px; background-color: #4CAF50; color: white; font-size: 18px;">
+    <div>
+      <span style="font-weight: bold; color: #f44336;">Chủ phòng:</span> <span id="player1" style="color: #fff;"><%- room?.hostUser?.fullName || room?.hostUser?.nickname || room?.host %></span>
+    </div>
+    <div>
+      <span style="font-weight: bold;">Thời gian: </span><span id="timer" style="color: white; font-weight: bold;">00:00</span>
+    </div>
+    <div>
+      <span style="font-weight: bold; color: #f44336;">Khách mới:</span> <span id="player2" style="color: #fff;"></span>
+    </div>
+  </div>
+</body>
+</html>
+<script>
+  const currentUsername = JSON.parse(localStorage.getItem('user')).username;
+  let room = <%- JSON.stringify(room) %>;
+  let notification = document.getElementById('notification');
+  let player2 = document.getElementById('player2');
+  if (room?.guestUser?.fullName) {
+    player2.innerText = room.guestUser.fullName;
+  } else if (room?.guest) {
+    player2.innerText = room.guest;
+  } else {
+    player2.innerText = 'Chưa có người tham gia';
+  }
+  
+  window.socket.on('guestJoined', (data) => {
+    if(data.roomCode === room.CODE) {
+      room = data.room;
+
+      if (room?.guestUser?.fullName) {
+        player2.innerText = room.guestUser.fullName;
+      } else if (room?.guest) {
+        player2.innerText = room.guest;
+      } else {
+        player2.innerText = 'Chưa có người tham gia';
+      }
+
+      notification.innerText = data.message;
+      notification.hidden = false;
+      setTimeout(() => {
+        notification.hidden = true;
+        notification.innerText = '';
+      }, 2000);
+    }
+  });
+
+  let timerStart = document.getElementById('startGame');
+  let countdownInterval;
+  let currentPlayer;
+  let timeLeft = 60;
+  let timerInterval;
+  let onclick = false;
+
+  window.socket.on('startGameTimer', (data) => {
+    if (data.roomCode === room.CODE) {
+      let time = 10;
+
+      timerStart.innerText = `Trò chơi bắt đầu sau ${time} giây!`;
+      timerStart.hidden = false;
+
+      if (countdownInterval) clearInterval(countdownInterval);
+
+      countdownInterval = setInterval(() => {
+        time--;
+        if (time > 0) {
+          timerStart.innerText = `Trò chơi bắt đầu sau ${time} giây!`;
+        } else {
+          clearInterval(countdownInterval);
+          timerStart.hidden = true;
+          timerStart.innerText = '';
+          currentPlayer = room.host;
+          onclick = true;
+          startTimer(currentPlayer);
+        }
+      }, 1000);
+    }
+  });
+
+  function startTimer(currentPlayer) {
+    timerInterval = setInterval(() => {
+      if (timeLeft === 0) {
+        gameOver = true;
+        notification.innerText = `${currentPlayer === room.host ? room?.hostUser?.fullName : room?.guestUser?.fullName} đã hết thời gian! Game over!`;
+        notification.hidden = false;
+        clearInterval(timerInterval);
+      } else {
+        timeLeft--;
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById('timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        document.getElementById('timer').style.color = 'red'
+        if(currentPlayer === room.host) {
+          document.getElementById('player1').style.color = 'red';
+          document.getElementById('player2').style.color = 'white';
+        } else {
+          document.getElementById('player1').style.color = 'white';
+          document.getElementById('player2').style.color = 'red';
+        }
+      }
+    }, 1000);
+  }
+
+  const board= document.getElementById('board');
+  const size = 15;
+
+  const cells = [];
+
+  for (let row = 0; row < size; row++) {
+    const rowCells = [];
+    
+    for (let col = 0; col < size; col++) {
+      const cell = document.createElement('div');
+      cell.style.width = '30px';
+      cell.style.height = '30px';
+      cell.style.backgroundColor = '#fff';
+      cell.style.border = '1px solid #ddd';
+      cell.style.cursor = 'pointer';
+      cell.style.display = 'flex';
+      cell.style.alignItems = 'center';
+      cell.style.justifyContent = 'center';
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      cell.addEventListener('click', () => {
+        handleCellClick(row, col);
+      });
+
+      board.appendChild(cell);
+      rowCells.push(cell);
+    }
+    
+    cells.push(rowCells);
+  }
+
+  const boardState = Array(size).fill().map(() => Array(size).fill(null));
+  let gameOver = false;
+  let playerSymbol = '';
+  
+  function handleCellClick(row, col) {
+    if (gameOver || boardState[row][col] || !onclick) {
+      return;
+    }
+
+    const isMyTurn = (currentPlayer === room.host && currentUsername === room.host) || 
+                     (currentPlayer === room.guest && currentUsername === room.guest);
+    
+    if (!isMyTurn) {
+      return;
+    }
+    
+    playerSymbol = currentPlayer === room.host ? 'X' : 'O';
+    
+    boardState[row][col] = playerSymbol;
+    const cell = cells[row][col];
+    cell.textContent = playerSymbol;
+    cell.style.color = playerSymbol === 'X' ? 'red' : 'blue';
+    cell.style.fontWeight = 'bold';
+    cell.style.fontSize = '24px';
+    
+    if (checkWin(row, col, playerSymbol)) {
+      window.socket.emit('gameWon', {
+        roomCode: room.CODE,
+        winner: currentPlayer,
+      });
+      
+      gameOver = true;
+      notification.innerText = `Chúc mừng ${currentPlayer === room.host ? room?.hostUser?.fullName : room?.guestUser?.fullName}} đã thắng!`;
+      notification.hidden = false;
+      clearInterval(timerInterval);
+      return;
+    }
+    
+    if (checkDraw()) {
+      window.socket.emit('gameDraw', { roomCode: room.CODE });
+      gameOver = true;
+      notification.innerText = 'Hòa!';
+      notification.hidden = false;
+      clearInterval(timerInterval);
+      return;
+    }
+
+    window.socket.emit('makeMove', {
+      roomCode: room.CODE,
+      row: row,
+      col: col,
+      symbol: playerSymbol,
+      nextPlayer: currentPlayer === room.host ? room.guest : room.host
+    });
+    
+    currentPlayer = currentPlayer === room.host ? room.guest : room.host;
+    
+    clearInterval(timerInterval);
+    timeLeft = 60;
+    startTimer(currentPlayer);
+  }
+
+  function checkWin(row, col, symbol) {
+    const directions = [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [1, -1]
+    ];
+
+    for (const [dx, dy] of directions) {
+      let count = 1;
+      for (let dir = -1; dir <= 1; dir += 2) {
+        if (dir === 0) continue;
+        
+        for (let i = 1; i <= 4; i++) {
+          const x = row + dx * dir * i;
+          const y = col + dy * dir * i;
+          
+          if (x >= 0 && x < size && y >= 0 && y < size && boardState[x][y] === symbol) {
+            count++;
+          } else {
+            break;
+          }
+        }
+      }
+      
+      if (count >= 5) return true;
+    }
+
+    return false;
+  }
+
+  function checkDraw() {
+    for (let i = 0; i < size; i++) {
+      for (let j = 0; j < size; j++) {
+        if (boardState[i][j] === null) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  window.socket.on('makeMove', (data) => {
+    if (data.roomCode === room.CODE) {
+      const { row, col, symbol, nextPlayer } = data;
+      
+      boardState[row][col] = symbol;
+      cells[row][col].textContent = symbol;
+      cells[row][col].style.color = symbol === 'X' ? 'red' : 'blue';
+      cells[row][col].style.fontWeight = 'bold';
+      cells[row][col].style.fontSize = '24px';
+      
+      currentPlayer = nextPlayer;
+      
+      clearInterval(timerInterval);
+      timeLeft = 60;
+      startTimer(currentPlayer);
+    }
+  });
+
+  window.socket.on('gameWon', (data) => {
+    if (data.roomCode === room.CODE) {
+      gameOver = true;
+      clearInterval(timerInterval);
+      notification.innerText = `Chúc mừng ${data.winner === room.host ? room?.hostUser?.fullName : room?.guestUser?.fullName}} đã thắng!`;
+      notification.hidden = false;
+    }
+  });
+
+  window.socket.on('gameDraw', (data) => {
+    if (data.roomCode === room.CODE) {
+      gameOver = true;
+      clearInterval(timerInterval);
+      notification.innerText = `Hoà nhau rồi vui vẻ hoan hỉ!`
+      notification.hidden = false;
+    }
+  });
+</script>

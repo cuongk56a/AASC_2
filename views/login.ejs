@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+  <div style="background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); width: 300px;">
+    <h1 style="text-align: center; color: #333; margin-bottom: 20px;">ĐĂNG NHẬP</h1>
+    <form id="loginForm" style="display: flex; flex-direction: column; gap: 15px;">
+      <input type="text" name="username" placeholder="Tài khoản" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;"/>
+      <input type="password" name="password" placeholder="Mật khẩu" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;"/>
+      <button type="submit" style="padding: 10px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s ease;">
+        Đăng nhập
+      </button>
+    </form>
+
+    <div style="margin-top: 15px; text-align: center;">
+      <span>Bạn chưa có tài khoản?</span>
+      <a href="/auth/register"> Đăng ký </a>
+    </div>
+
+    <script>
+      const token = localStorage.getItem('token');
+      if(token){
+        window.location.href = '/';
+      }
+      document.getElementById('loginForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        
+        const formData = new FormData(this);
+        const username = formData.get('username').trim();
+        const password = formData.get('password').trim();
+        
+        const response = await fetch('/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password }),
+        });
+        
+        const result = await response.json();
+        
+        if (response.status === 200) {
+          localStorage.setItem('token', result.token);
+          localStorage.setItem('user', JSON.stringify(result.user));
+          window.location.href = result.redirectTo;
+        } else {
+          alert('Đăng nhập thất bại: ' + result.message);
+        }
+      });
+    </script>
+  </div>
+</body>
+</html>

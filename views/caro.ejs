@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0;">
+  <%- include('layout', { title: 'Caro'}) %>
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: #4CAF50; color: white; font-size: 24px; font-weight: bold;">
+    <div><a href="/" style="color: white; text-decoration: none; font-size: 24px; font-weight: bold;">TRANG CHỦ</a></div>
+    <div onclick="logout()" style="cursor: pointer; font-size: 18px; background-color: #f44336; padding: 8px 15px; border-radius: 5px; transition: background-color 0.3s;">Đăng xuất</div>
+  </div>
+
+  <div style="display: flex; justify-content: center; align-items: center; height: calc(100vh - 70px);">
+    <div style="display: flex; gap: 40px; flex-direction: column;">
+      <button id="new-room" style="padding: 20px 30px; font-size: 20px; background-color: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s ease; min-width: 140px;">Tạo mới</button>
+      <button id="input-id" style="padding: 20px 30px; font-size: 20px; background-color: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s ease; min-width: 140px;">Tham gia phòng</button>
+      <input type="text" id="room-id" placeholder="Nhập mã phòng" style="padding: 20px 30px; font-size: 20px; text-align: center; border: 1px solid #ccc; border-radius: 4px; outline: none; min-width: 140px; color: black; font-weight: bold; text-transform:uppercase;" hidden maxlength="6"/>
+      <div style="width: auto; display: flex; justify-content: space-around; align-items: center; gap: 20px;">
+        <button id="join-room" style="padding: 20px 30px; font-size: 20px; background-color: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s ease; min-width: 140px;" hidden>Tham gia</button>
+        <button id="back" style="padding: 20px 30px; font-size: 20px; background-color: #4CAF50; color: white; border: none; border-radius: 10px; cursor: pointer; transition: background-color 0.3s ease; min-width: 140px;" hidden>Trở lại</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+
+<script>
+  const newRoomButton = document.getElementById('new-room');
+  const joinRoomButton = document.getElementById('input-id');
+  const roomIdInput = document.getElementById('room-id');
+  const joinRoomActionButton = document.getElementById('join-room');
+  const backButton = document.getElementById('back');
+
+  function toggleRoomInput(show) {
+    roomIdInput.hidden = !show;
+    joinRoomActionButton.hidden = !show;
+    backButton.hidden = !show;
+    newRoomButton.hidden = show;
+    joinRoomButton.hidden = show;
+  }
+  const socketId = localStorage.getItem('socketId');
+  const user = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')) : null;
+  const token = localStorage.getItem('token');
+  if(newRoomButton) {
+    newRoomButton.addEventListener('click', async () => {
+      const response = await fetch('/caro/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ socketId, username: user.username }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 201) {
+        window.socket.emit('joinRoom', { username: user.username , socketId, roomCode: result.room.CODE, type: 'host' });
+        window.location.href = `/caro/room?CODE=${result.room.CODE}`;
+      } else {
+        alert('Tạo phòng thất bại: ' + result.message);
+      }
+    });
+  }
+
+  if (joinRoomButton) {
+    joinRoomButton.addEventListener('click', () => {
+      toggleRoomInput(true);
+      roomIdInput.focus();
+    });
+  }
+
+  if (newRoomButton) {
+    newRoomButton.addEventListener('click', () => {
+      window.socket.emit('create-room', { userId: user._id });
+    });
+  }
+
+  if (backButton) {
+    backButton.addEventListener('click', () => {
+      toggleRoomInput(false);
+    });
+  }
+
+  if (joinRoomActionButton) {
+    joinRoomActionButton.addEventListener('click', async () => {
+      const roomCode = roomIdInput.value.trim().toUpperCase();
+      if (roomCode.length === 0) {
+        alert('Vui lòng nhập mã phòng!');
+        return;
+      }
+      
+      const response = await fetch('/caro/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ socketId, CODE: roomCode, username: user.username }),
+      });
+      
+      const result = await response.json();
+
+      if (response.status === 200) {
+        if(result.status){
+          window.socket.emit('joinRoom', { username: user.username , socketId, roomCode: result.room.CODE, type: 'guest' });
+          window.location.href = `/caro/room?CODE=${result.room.CODE}`;
+        }else{
+          alert('Phòng đã đầy hoặc không tồn tại!');
+        }
+      } else {
+        alert('Tham gia phòng thất bại: ' + result.message);
+      }
+    });
+  }
+
+</script>

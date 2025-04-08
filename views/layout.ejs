@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %></title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    if (!window.socket) {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        window.location.href = '/auth/login';
+      } else {
+        const socketId = localStorage.getItem('socketId');
+        
+        if (socketId) {
+          window.socket = io({
+            auth: {
+              token: token,
+            },
+            query: { socketId },
+          });
+
+          window.socket.on('connect', () => {
+            console.log('Reconnected with existing socket id:', socketId);
+          });
+
+        } else {
+          window.socket = io({
+            auth: {
+              token: token,
+            },
+          });
+
+          window.socket.on('connect', () => {
+            console.log('Connected to server with socket id:', window.socket.id);
+            localStorage.setItem('socketId', window.socket.id);
+          });
+        }
+
+        window.socket.on('disconnect', () => {
+          console.log('Disconnected');
+        });
+      }
+    }
+
+    function logout(){
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('socketId');
+      if (window.socket) {
+        window.socket.disconnect();
+      }
+      window.location.href = '/auth/login';
+    }
+  </script>
+</head>
+<body>
+</body>
+</html>

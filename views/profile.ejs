@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f9; margin: 0;">
+  <%- include('layout', { title: 'Profile'}) %>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: #4CAF50; color: white; font-size: 24px; font-weight: bold;">
+    <div><a href="/" style="color: white; text-decoration: none; font-size: 24px; font-weight: bold;">TRANG CHỦ</a></div>
+    <div class="logout" onclick="logout()" style="cursor: pointer; font-size: 18px; background-color: #f44336; padding: 8px 15px; border-radius: 5px; transition: background-color 0.3s;">
+      Đăng xuất
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: center; align-items: center; height: calc(100vh - 70px);">
+    <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); width: 400px;">
+      <h2 style="text-align: center; color: #333;">THÔNG TIN CÁ NHÂN</h2>
+      <form id="profileForm" style="display: flex; flex-direction: column; gap: 15px;">
+        
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="username" style="font-size: 16px; color: #333; width: 150px;">Tài khoản:</label>
+          <input type="text" id="username" placeholder="Tài khoản" style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%; color: red; font-weight: bold;" disabled />
+        </div>
+
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="fullName" style="font-size: 16px; color: #333; width: 150px;">Tên:</label>
+          <input type="text" id="fullName" placeholder="Tên" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%;" />
+        </div>
+
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="nickname" style="font-size: 16px; color: #333; width: 150px;">Biệt danh:</label>
+          <input type="text" id="nickname" placeholder="Biệt danh" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%;" />
+        </div>
+
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="email" style="font-size: 16px; color: #333; width: 150px;">Email:</label>
+          <input type="text" id="email" placeholder="Email" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%;" />
+        </div>
+
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="age" style="font-size: 16px; color: #333; width: 150px;">Tuổi:</label>
+          <input type="text" id="age" placeholder="Tuổi" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%;" />
+        </div>
+
+        <div style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
+          <label for="password" style="font-size: 16px; color: #333; width: 150px;">Mật khẩu:</label>
+          <input type="password" id="password" placeholder="Mật khẩu" style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; width: 100%;" />
+        </div>
+
+        <button type="submit" style="padding: 10px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s ease;">
+          Lưu thay đổi
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      window.location.href = '/auth/login';
+    } else {
+      document.getElementById('username').value = user.username;
+      document.getElementById('password').value = '';
+      document.getElementById('email').value = user.email || '';
+      document.getElementById('fullName').value = user.fullName || '';
+      document.getElementById('nickname').value = user.nickname || '';
+      document.getElementById('age').value = user.age || '';
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      
+      const updatedUser = {
+        email: document.getElementById('email').value,
+        fullName: document.getElementById('fullName').value,
+        nickname: document.getElementById('nickname').value,
+        age: Number(document.getElementById('age').value),
+        password: document.getElementById('password').value||undefined,
+      };
+      
+      const response = await fetch('/users/update', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updatedUser),
+      });
+
+      const result = await response.json();
+      if (response.status === 200) {
+        localStorage.setItem('user', JSON.stringify(result));
+        document.getElementById('password').value = '';
+        alert('Cập nhật thành công!');
+      }else {
+        alert('Cập nhật thất bại: ' + result.message);
+      }
+    });
+  </script>
+</body>
+</html>

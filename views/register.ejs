@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+  <div style="background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); width: 300px;">
+    <h1 style="text-align: center; color: #333; margin-bottom: 20px;">ĐĂNG KÝ</h1>
+    <form id="registerForm" style="display: flex; flex-direction: column; gap: 15px;">
+      <input type="text" name="fullName" placeholder="Nhập họ tên" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+      <input type="text" name="username" placeholder="Nhập tài khoản" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+      <input type="password" name="password" placeholder="Mật khẩu" required style="padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none;">
+      <button type="submit" style="padding: 10px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s ease;">
+        Đăng ký
+      </button>
+    </form>
+
+    <div style="margin-top: 15px; text-align: center;">
+      <span>Đã có tài khoản?</span>
+      <a href="/auth/login"> Đăng nhập </a>
+    </div>
+  </div>
+  <script>
+    const token = localStorage.getItem('token');
+    if(token){
+      window.location.href = '/';
+    }
+    document.getElementById('registerForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const formData = new FormData(this);
+      const fullName = formData.get('fullName').trim();
+      const username = formData.get('username').trim();
+      const password = formData.get('password').trim();
+      const vietnameseAccentRegex = /[àáạảãâầấậẩẫàáàạãăằắặẳẵ]/i;
+
+      if (vietnameseAccentRegex.test(username)) {
+        alert('Tên tài khoản không được có dấu!');
+        return;
+      }
+      if (password.length < 6) {
+        alert('Mật khẩu phải từ 6 ký tự trở lên');
+        return;
+      }
+
+      const response = await fetch('/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({fullName, username, password }),
+      });
+
+      const result = await response.json();
+
+      if (response.status === 201) {
+        window.location.href = '/auth/login';
+        alert('Đăng ký thành công!');
+      } else {
+        alert('Đăng ký thất ký: ' + result.message);
+      }
+    });
+  </script>
+</body>
+</html>
